@@ -1,13 +1,5 @@
 #include <linux/module.h>
 
-#include <linux/cdev.h>
-#include <linux/device.h>
-#include <linux/fs.h>
-#include <linux/init.h>
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/sched.h>
-
 #define DEVICE_NAME "hc-sr94"
 #define VERSION_MINOR (0x01)
 #define VERSION_MAJOR (0x00)
