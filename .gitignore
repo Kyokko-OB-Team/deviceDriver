@@ -72,3 +72,8 @@ Temporary Items
 # vscode
 .vscode/
 
+# vscode gnu global
+GPATH
+GRTAGS
+GTAGS
+
