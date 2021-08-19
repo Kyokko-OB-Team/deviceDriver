@@ -1,6 +1,8 @@
 #include <linux/module.h>
 
-#define DEVICE_NAME "hc-sr94"
+#include <linux/fs.h>
+
+#define DEVICE_NAME "hc-sr04"
 #define VERSION_MINOR (0x01)
 #define VERSION_MAJOR (0x00)
 
@@ -9,7 +11,7 @@ static const unsigned int MINOR_BASE = 0;
 static const unsigned int MINOR_NUM = 1; // マイナー番号は0
 
 // このデバイスドライバのメジャー番号(動的に決める)
-//static unsigned int device_major;
+static unsigned int device_major;
 
 // キャラクタデバイスのオブジェクト
 //static struct cdev device_cdev;
@@ -37,11 +39,16 @@ static int driver_hardware_init(void) {
 
   printk(KERN_INFO "%s init. ver.%d.%d\n", DEVICE_NAME, VERSION_MAJOR, VERSION_MINOR);
 
+  // 空いているメジャー番号を確保
   alloc_ret = alloc_chrdev_region(&dev, MINOR_BASE, MINOR_NUM, DEVICE_NAME);
   if (alloc_ret != 0) {
     printk(KERN_ERR "alloc_cdrdev_region = %d\n", alloc_ret);
     return -1;
   }
+
+  // 取得したメジャー番号 + マイナー番号(dev)から、メジャー番号を取得して保持する
+  device_major = MAJOR(dev);
+  dev = MKDEV(device_major, MINOR_BASE);
 
   return 0;
 }
