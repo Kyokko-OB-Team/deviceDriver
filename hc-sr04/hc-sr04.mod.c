@@ -25,6 +25,11 @@ MODULE_INFO(retpoline, "Y");
 static const struct modversion_info ____versions[]
 __used __section(__versions) = {
 	{ 0xe338ec46, "module_layout" },
+	{ 0x6091b333, "unregister_chrdev_region" },
+	{ 0x2ae31514, "cdev_del" },
+	{ 0x550754f6, "__class_create" },
+	{ 0xdb4e9b54, "cdev_add" },
+	{ 0xe91a98fb, "cdev_init" },
 	{ 0xe3ec2f2b, "alloc_chrdev_region" },
 	{ 0xc5850110, "printk" },
 	{ 0xb1ad28e0, "__gnu_mcount_nc" },
@@ -33,4 +38,4 @@ __used __section(__versions) = {
 MODULE_INFO(depends, "");
 
 
-MODULE_INFO(srcversion, "1678E929A1C85629CD5F365");
+MODULE_INFO(srcversion, "44A679CE6D61315FF812CE3");

@@ -1,5 +1,6 @@
 #include <linux/module.h>
 
+#include <linux/cdev.h>
 #include <linux/fs.h>
 
 #define DEVICE_NAME "hc-sr04"
@@ -14,10 +15,10 @@ static const unsigned int MINOR_NUM = 1; // マイナー番号は0
 static unsigned int device_major;
 
 // キャラクタデバイスのオブジェクト
-//static struct cdev device_cdev;
+static struct cdev device_cdev;
 
 // デバイスドライバのクラスオブジェクト
-//static struct class *device_class = NULL;
+static struct class *device_class = NULL;
 
 typedef enum {
   _GPIO_SENSOR_ECHO,
@@ -31,10 +32,15 @@ static const int gpio_num[_GPIO_TYPE_MAX] = {
   15, // トリガ出力 : GPIO15(DSen_Trigger)
 };
 
+static const struct file_operations driver_fops = {
+  .open       = NULL,
+  .release    = NULL,
+};
+
 // 初期化
 static int driver_hardware_init(void) {
   int alloc_ret = 0;
-  //int cdev_err = 0;
+  int cdev_err = 0;
   dev_t dev;
 
   printk(KERN_INFO "%s init. ver.%d.%d\n", DEVICE_NAME, VERSION_MAJOR, VERSION_MINOR);
@@ -49,6 +55,27 @@ static int driver_hardware_init(void) {
   // 取得したメジャー番号 + マイナー番号(dev)から、メジャー番号を取得して保持する
   device_major = MAJOR(dev);
   dev = MKDEV(device_major, MINOR_BASE);
+
+  // cdev構造体の初期化とシステムコールハンドラテーブルの登録
+  cdev_init(&device_cdev, &driver_fops);
+  device_cdev.owner = THIS_MODULE;
+
+  // このデバイスドライバをカーネルに登録
+  cdev_err = cdev_add(&device_cdev, dev, MINOR_NUM);
+  if (cdev_err != 0) {
+    printk(KERN_ERR "cdev_add = %d\n", cdev_err);
+    unregister_chrdev_region(dev, MINOR_NUM);
+    return -1;
+  }
+
+  // デバイスのクラス登録(/sys/class/DEVICE_NAME の作成)
+  device_class = class_create(THIS_MODULE, DEVICE_NAME);
+  if (IS_ERR(device_class)) {
+    printk(KERN_ERR "class_create err\n");
+    cdev_del(&device_cdev);
+    unregister_chrdev_region(dev, MINOR_NUM);
+    return -1;
+  }
 
   return 0;
 }
