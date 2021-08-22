@@ -37,13 +37,21 @@ static const struct file_operations driver_fops = {
   .release    = NULL,
 };
 
-// 初期化
-static int driver_hardware_init(void) {
+static void drv_hardware_init(void)
+{
+}
+
+// insmod時に呼ばれる関数
+static int drv_init(void)
+{
   int alloc_ret = 0;
   int cdev_err = 0;
   dev_t dev;
 
   printk(KERN_INFO "%s init. ver.%d.%d\n", DEVICE_NAME, VERSION_MAJOR, VERSION_MINOR);
+
+  // ハードウェア初期化
+  drv_hardware_init();
 
   // 空いているメジャー番号を確保
   alloc_ret = alloc_chrdev_region(&dev, MINOR_BASE, MINOR_NUM, DEVICE_NAME);
@@ -76,17 +84,17 @@ static int driver_hardware_init(void) {
     unregister_chrdev_region(dev, MINOR_NUM);
     return -1;
   }
-
   return 0;
 }
 
-// 終了
-static void driver_hardware_exit(void) {
+// rmmod時に呼ばれる関数
+static void drv_exit(void)
+{
   printk(KERN_INFO "HC-SR04 module exit.\n");
 }
 
-module_init(driver_hardware_init);
-module_exit(driver_hardware_exit);
+module_init(drv_init);
+module_exit(drv_exit);
 
 MODULE_AUTHOR("gariyoshi0630@gmail.com");
 MODULE_LICENSE("GPL");
