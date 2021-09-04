@@ -38,10 +38,39 @@ static const int gpio_num[_GPIO_TYPE_MAX] = {
 
 static char stored_gpio_value[_GPIO_TYPE_MAX];
 
+static int drv_open(struct inode *inode, struct file *filp)
+{
+	return 0;
+}
+
+static int drv_release(struct inode *inode, struct file *filp)
+{
+	return 0;
+}
+
+static int drv_read(struct inode *inode, struct file *filp)
+{
+	return 0;
+}
+
+static int drv_write(struct inode *inode, struct file *filp)
+{
+	return 0;
+}
+
+static long drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	drv_rq_t rq;
+	int rt_info = 0;
+	char rt_char;
+}
+
 /* システムコールのハンドラテーブル */
 static const struct file_operations driver_fops = {
-	.open = NULL,
-	.release = NULL,
+	.open = drv_open,
+	.release = drv_release,
+	.read = drv_read,
+	.write = drv_write,
 };
 
 /* ハードウェア初期化 */
@@ -52,15 +81,13 @@ static void drv_hardware_init(void)
 	for (i = 0; i < _GPIO_TYPE_MAX; i++) {
 		gpio = gpio_num[i];
 		if (gpio_is_valid(gpio)) {
-			if (gpio_request(gpio, DEVICE_NAME)) {
+			if (gpio_request(gpio, DEVICE_NAME))
 				printk(KERN_ERR "gpio_request(%d) error.\n", gpio);
-			}
 			gpio_direction_input(gpio);
-			if (gpio_get_value(gpio) == 0) {
+			if (gpio_get_value(gpio) == 0)
 				stored_gpio_value[i] = 0;
-			} else {
+			else
 				stored_gpio_value[i] = 1;
-			}
 		} else {
 			printk(KERN_ERR "gpio_is_valid(%d) error.\n", gpio);
 		}
@@ -127,11 +154,10 @@ static void drv_hardware_exit(void)
 	int gpio;
 	for (i = 0; i < _GPIO_TYPE_MAX; i++) {
 		gpio = gpio_num[i];
-		if (gpio_is_valid(gpio)) {
+		if (gpio_is_valid(gpio))
 			gpio_free(gpio);
-		} else {
+		else
 			printk(KERN_ERR "gpio_is_valid(%d) is not valid.\n", gpio);
-		}
 	}
 }
 
