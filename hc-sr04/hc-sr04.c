@@ -38,43 +38,46 @@ static const int gpio_num[_GPIO_TYPE_MAX] = {
 
 static char stored_gpio_value[_GPIO_TYPE_MAX];
 
-static int drv_open(struct inode *inode, struct file *filp)
+static int gpiodrv_open(struct inode *inode, struct file *filp)
 {
 	return 0;
 }
 
-static int drv_release(struct inode *inode, struct file *filp)
+static int gpiodrv_release(struct inode *inode, struct file *filp)
 {
 	return 0;
 }
 
-static int drv_read(struct inode *inode, struct file *filp)
+static int gpiodrv_read(struct file *filp, char *user_buf, size_t count, loff_t *ppos)
 {
+	printk(KERN_INFO "read() is not implement\n");
 	return 0;
 }
 
-static int drv_write(struct inode *inode, struct file *filp)
+static int gpiodrv_write(struct file *filp, const char *user_buf, size_t count, loff_t *ppos)
 {
+	printk(KERN_INFO "write() is not implement\n");
 	return 0;
 }
 
-static long drv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	drv_rq_t rq;
-	int rt_info = 0;
-	char rt_char;
+//	drv_rq_t rq;
+//	int rt_info = 0;
+//	char rt_char;
+	return 0;
 }
 
 /* システムコールのハンドラテーブル */
-static const struct file_operations driver_fops = {
-	.open = drv_open,
-	.release = drv_release,
-	.read = drv_read,
-	.write = drv_write,
+static const struct file_operations gpiodrv_fops = {
+	.open = gpiodrv_open,
+	.release = gpiodrv_release,
+	.read = gpiodrv_read,
+	.write = gpiodrv_write,
 };
 
 /* ハードウェア初期化 */
-static void drv_hardware_init(void)
+static void gpiodrv_hardware_init(void)
 {
 	int i;
 	int gpio;
@@ -95,7 +98,7 @@ static void drv_hardware_init(void)
 }
 
 /* insmod時に呼ばれる関数 */
-static int __init drv_init(void)
+static int __init gpiodrv_init(void)
 {
 	int alloc_ret = 0;
 	int cdev_err = 0;
@@ -106,7 +109,7 @@ static int __init drv_init(void)
 						 VERSION_MINOR);
 
 	/* ハードウェア初期化 */
-	drv_hardware_init();
+	gpiodrv_hardware_init();
 
 	/* 空いているメジャー番号を確保 */
 	alloc_ret = alloc_chrdev_region(&dev, MINOR_BASE, MINOR_NUM, DEVICE_NAME);
@@ -121,7 +124,7 @@ static int __init drv_init(void)
 	dev = MKDEV(device_major, MINOR_BASE);
 
 	/* cdev構造体の初期化とシステムコールハンドラテーブルの登録 */
-	cdev_init(&device_cdev, &driver_fops);
+	cdev_init(&device_cdev, &gpiodrv_fops);
 	device_cdev.owner = THIS_MODULE;
 
 	/* このデバイスドライバをカーネルに登録 */
@@ -148,7 +151,7 @@ static int __init drv_init(void)
 }
 
 /* ハードウェア終了 */
-static void drv_hardware_exit(void)
+static void gpiodrv_hardware_exit(void)
 {
 	int i;
 	int gpio;
@@ -162,7 +165,7 @@ static void drv_hardware_exit(void)
 }
 
 /* rmmod時に呼ばれる関数 */
-static void __exit drv_exit(void)
+static void __exit gpiodrv_exit(void)
 {
 	dev_t dev;
 
@@ -180,13 +183,13 @@ static void __exit drv_exit(void)
 	unregister_chrdev_region(dev, MINOR_NUM);
 
 	/* ハードウェア終了処理 */
-	drv_hardware_exit();
+	gpiodrv_hardware_exit();
 
 	return;
 }
 
-module_init(drv_init);
-module_exit(drv_exit);
+module_init(gpiodrv_init);
+module_exit(gpiodrv_exit);
 
 MODULE_AUTHOR("gariyoshi0630@gmail.com");
 MODULE_LICENSE("GPL");
