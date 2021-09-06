@@ -25,15 +25,28 @@ static struct cdev device_cdev;
 static struct class *device_class = NULL;
 
 typedef enum {
-	_GPIO_SENSOR_ECHO,
-	_GPIO_SENSOR_TRIGGER,
-	_GPIO_TYPE_MAX,
-} _GPIO_TYPE;
+	_GPIO_NUM_SENSOR_ECHO,
+	_GPIO_NUM_SENSOR_TRIGGER,
+	_GPIO_NUM_MAX,
+} _GPIO_NUM;
+
+typedef enum {
+	_GPIO_IO_INPUT,
+	_GPIO_IO_OUTPUT_LOW,
+	_GPIO_IO_OUTPUT_HIGH,
+	_GPIO_IO_MAX,
+} _GPIO_IO_TYPE;
 
 /* GPIO番号 */
-static const int gpio_num[_GPIO_TYPE_MAX] = {
+static const int gpio_num[_GPIO_NUM_MAX] = {
 	14, /* エコー入力 : GPIO14(DSen_Echo) */
 	15, /* トリガ出力 : GPIO15(DSen_Trigger) */
+};
+
+/* 初期値 */
+static const int gpio_init_value[] = {
+	_GPIO_IO_INPUT,
+	_GPIO_IO_OUTPUT_LOW,
 };
 
 static char stored_gpio_value[_GPIO_TYPE_MAX];
@@ -62,10 +75,14 @@ static int gpiodrv_write(struct file *filp, const char *user_buf, size_t count, 
 
 static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-//	drv_rq_t rq;
-//	int rt_info = 0;
-//	char rt_char;
-	return 0;
+	drv_rq_t rq;
+	int rt_info = 0;
+	char rt_char;
+
+	switch (cmd) {
+	case GPIO_HCSR04_EXEC_MEASURE_DISTANCE:
+		if ()
+	}
 }
 
 /* システムコールのハンドラテーブル */
@@ -74,6 +91,8 @@ static const struct file_operations gpiodrv_fops = {
 	.release = gpiodrv_release,
 	.read = gpiodrv_read,
 	.write = gpiodrv_write,
+	.unlocked_ioctl = gpiodrv_ioctl,
+	.compat_ioctl = gpiodrv_ioctl,
 };
 
 /* ハードウェア初期化 */
