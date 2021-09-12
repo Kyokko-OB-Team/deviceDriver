@@ -1,6 +1,7 @@
 #include <linux/module.h>
 
 #include <linux/cdev.h>
+#include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/gpio.h>
 
@@ -51,7 +52,75 @@ static const int gpio_init_value[] = {
 	_GPIO_IO_OUTPUT_LOW,
 };
 
+/* 現在の値 */
 static char stored_gpio_value[_GPIO_NUM_MAX];
+
+/* param
+ * id : GPIO ID
+ * value : Outputレベル
+ * return :
+ * 	0はlow、1はhighを設定出来ました。
+ * 	エラーの場合は負の値を返します。
+ */
+static char _set_output (int id, char value) {
+	char output = 0;
+
+	if ((id < 0) || (_GPIO_NUM_MAX <= id)) {
+		printk(KERN_ERR "Set illegal ID error.(ID:%d)\n", id);
+		return -EINVAL;
+	}
+	switch (gpio_init_value[id]) {
+	case _GPIO_IO_OUTPUT_LOW:
+	case _GPIO_IO_OUTPUT_HIGH:
+		break;
+
+	case _GPIO_IO_INPUT:
+	default:
+		printk(KERN_ERR "Set illegal ID error.(ID:%d)\n", id);
+		return -EINVAL;
+	}
+	if (value == 0)
+		output = 0;
+	else
+		output = 1;
+	gpio_direction_output(gpio_num[id], output);
+	stored_gpio_value[id] = output;
+
+	return output;
+}
+
+static char _get_input (int id) {
+	char input = 0;
+
+	if ((id < 0) || (_GPIO_NUM_MAX <= id)) {
+		printk(KERN_ERR "Set illegal ID error.(ID:%d)\n", id);
+		return -EINVAL;
+	}
+	switch (gpio_init_value[id]) {
+	case _GPIO_IO_INPUT:
+		break;
+
+	case _GPIO_IO_OUTPUT_LOW:
+	case _GPIO_IO_OUTPUT_HIGH:
+	default:
+		printk(KERN_ERR "Set illegal ID error.(ID:%d)\n", id);
+		return -EINVAL;
+	}
+	if (gpio_get_value(gpio_num[id]) == 0) {
+		input = 0;
+		stored_gpio_value[id] = 0;
+	} else {
+		input = 1;
+		stored_gpio_value[id] = 1;
+	}
+	return input;
+}
+
+static char trigger_output (void)
+{
+	_set_outpu(_GPIO_NUM_SENSOR_TRIGGER, 1);
+	sleep();
+}
 
 static int gpiodrv_open(struct inode *inode, struct file *filp)
 {
@@ -84,7 +153,6 @@ static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	switch (cmd) {
 	/* 距離測定開始 */
 	case GPIO_HCSR04_EXEC_MEASURE_DISTANCE:
-		if (0)
 	}
 }
 
