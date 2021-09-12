@@ -82,7 +82,9 @@ static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	char rt_char;
 
 	switch (cmd) {
+	/* 距離測定開始 */
 	case GPIO_HCSR04_EXEC_MEASURE_DISTANCE:
+		if (0)
 	}
 }
 
