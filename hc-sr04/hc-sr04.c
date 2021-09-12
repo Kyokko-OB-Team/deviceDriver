@@ -24,12 +24,14 @@ static struct cdev device_cdev;
 /* デバイスドライバのクラスオブジェクト */
 static struct class *device_class = NULL;
 
+/* GPIO割当 */
 typedef enum {
 	_GPIO_NUM_SENSOR_ECHO,
 	_GPIO_NUM_SENSOR_TRIGGER,
 	_GPIO_NUM_MAX,
 } _GPIO_NUM;
 
+/* GPIO設定種別 */
 typedef enum {
 	_GPIO_IO_INPUT,
 	_GPIO_IO_OUTPUT_LOW,
@@ -49,7 +51,7 @@ static const int gpio_init_value[] = {
 	_GPIO_IO_OUTPUT_LOW,
 };
 
-static char stored_gpio_value[_GPIO_TYPE_MAX];
+static char stored_gpio_value[_GPIO_NUM_MAX];
 
 static int gpiodrv_open(struct inode *inode, struct file *filp)
 {
@@ -81,7 +83,6 @@ static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 
 	switch (cmd) {
 	case GPIO_HCSR04_EXEC_MEASURE_DISTANCE:
-		if ()
 	}
 }
 
@@ -100,16 +101,35 @@ static void gpiodrv_hardware_init(void)
 {
 	int i;
 	int gpio;
-	for (i = 0; i < _GPIO_TYPE_MAX; i++) {
+	for (i = 0; i < _GPIO_NUM_MAX; i++) {
 		gpio = gpio_num[i];
 		if (gpio_is_valid(gpio)) {
 			if (gpio_request(gpio, DEVICE_NAME))
 				printk(KERN_ERR "gpio_request(%d) error.\n", gpio);
-			gpio_direction_input(gpio);
-			if (gpio_get_value(gpio) == 0)
+
+			switch (gpio_init_value[i]) {
+			case _GPIO_IO_INPUT:
+				gpio_direction_input(gpio);
+				if (gpio_get_value(gpio) == 0)
+					stored_gpio_value[i] = 0;
+				else
+					stored_gpio_value[i] = 1;
+				break;
+
+			case _GPIO_IO_OUTPUT_LOW:
+				gpio_direction_output(gpio, 0);
 				stored_gpio_value[i] = 0;
-			else
-				stored_gpio_value[i] = 1;
+				break;
+
+			case _GPIO_IO_OUTPUT_HIGH:
+				gpio_direction_output(gpio, 1);
+				stored_gpio_value[i] = 0;
+				break;
+
+			default:
+				printk(KERN_ERR "Illegal initial value error.\n");
+				break;
+			}
 		} else {
 			printk(KERN_ERR "gpio_is_valid(%d) error.\n", gpio);
 		}
@@ -174,7 +194,7 @@ static void gpiodrv_hardware_exit(void)
 {
 	int i;
 	int gpio;
-	for (i = 0; i < _GPIO_TYPE_MAX; i++) {
+	for (i = 0; i < _GPIO_NUM_MAX; i++) {
 		gpio = gpio_num[i];
 		if (gpio_is_valid(gpio))
 			gpio_free(gpio);
