@@ -116,10 +116,14 @@ static char _get_input (int id) {
 	return input;
 }
 
-static char trigger_output (void)
+static void trigger_output (void)
 {
-	_set_outpu(_GPIO_NUM_SENSOR_TRIGGER, 1);
-	sleep();
+	/* トリガパルス出力時間 */
+	unsigned long trigger_pulse_us = 20; /* 仕様10us以上のため誤差を考慮して20us */
+
+	_set_output(_GPIO_NUM_SENSOR_TRIGGER, 1);
+	udelay(trigger_pulse_us);
+	_set_output(_GPIO_NUM_SENSOR_TRIGGER, 0);
 }
 
 static int gpiodrv_open(struct inode *inode, struct file *filp)
