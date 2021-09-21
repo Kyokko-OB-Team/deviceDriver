@@ -4,11 +4,13 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/gpio.h>
+#include <linux/interrupt.h>
 
 #include "../include/hc-sr04.h"
 
 #define DEVICE_NAME "hc-sr04"
 #define DEVICE_NAMED "hc-sr04%d"
+#define DEVICE_NAME_IRQ "hc-sr04_irq"
 #define VERSION_MINOR (0x01)
 #define VERSION_MAJOR (0x00)
 
@@ -54,6 +56,12 @@ static const int gpio_init_value[] = {
 
 /* 現在の値 */
 static char stored_gpio_value[_GPIO_NUM_MAX];
+
+/* 割り込み許可フラグ */
+bool irq_permit;
+
+/* 割り込み立ち上がり/立ち下がり判定フラグ */
+unsigned long irq_fall_or_rise;
 
 /* param
  * id : GPIO ID
@@ -116,6 +124,10 @@ static char _get_input (int id) {
 	return input;
 }
 
+static irqreturn_t irq_handler (int irq, void *arg) {
+	unsigned long flags;
+}
+
 static void trigger_output (void)
 {
 	/* トリガパルス出力時間 */
@@ -153,10 +165,21 @@ static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	drv_rq_t rq;
 	int rt_info = 0;
 	char rt_char;
+	int irq;
 
 	switch (cmd) {
 	/* 距離測定開始 */
 	case GPIO_HCSR04_EXEC_MEASURE_DISTANCE:
+		irq = gpio_to_irq(gpio_num[_GPIO_NUM_SENSOR_ECHO]);
+		if (request_irq(irq,
+				(void*)irq_handler,
+				IRQF_SHARED | IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+				DEVICE_NAME_IRQ,
+				DEVICE_NAME_IRQ) < 0)
+		{
+			printk(KERN_ERR "request irq error.\n");
+			return -EFAULT;
+		}
 	}
 }
 
