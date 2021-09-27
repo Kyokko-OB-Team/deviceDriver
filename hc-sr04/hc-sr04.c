@@ -5,6 +5,7 @@
 #include <linux/fs.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
+#include <linux/timekeeping.h>
 #include <linux/uaccess.h>
 
 #include "../include/hc-sr04.h"
@@ -14,6 +15,9 @@
 #define DEVICE_NAME_IRQ "hc-sr04_irq"
 #define VERSION_MINOR (0x01)
 #define VERSION_MAJOR (0x00)
+
+#define GPIO_LOW (0)
+#define GPIO_HIGH (1)
 
 /* このデバイスドライバで使うマイナー番号の開始番号と個数(=デバイス数) */
 static const unsigned int MINOR_BASE = 0;
@@ -58,11 +62,12 @@ static const int gpio_init_value[] = {
 /* 現在の値 */
 static char stored_gpio_value[_GPIO_NUM_MAX];
 
-/* 割り込み許可フラグ */
-bool irq_permit;
-
-/* 割り込み立ち上がり/立ち下がり判定フラグ */
-unsigned long irq_fall_or_rise;
+/* 割り込み番号 */
+int irq = 0;
+/* 立ち上がりのタイムスタンプ */
+static u64 rising_timestamp = 0;
+/* 立ち下がりのタイムスタンプ */
+static u64 falling_timestamp = 0;
 
 /* param
  * id : GPIO ID
@@ -121,18 +126,36 @@ static char _get_input (int id) {
 		printk(KERN_ERR "Set illegal ID error.(ID:%d)\n", id);
 		return -EINVAL;
 	}
-	if (gpio_get_value(gpio_num[id]) == 0) {
-		input = 0;
-		stored_gpio_value[id] = 0;
+	if (gpio_get_value(gpio_num[id]) == GPIO_LOW) {
+		input = GPIO_LOW;
+		stored_gpio_value[id] = GPIO_LOW;
 	} else {
-		input = 1;
-		stored_gpio_value[id] = 1;
+		input = GPIO_HIGH;
+		stored_gpio_value[id] = GPIO_HIGH;
 	}
 	return input;
 }
 
 static irqreturn_t irq_handler (int irq, void *arg) {
-	unsigned long flags;
+	char level_flag; /* 割り込みのエッジ */
+
+	level_flag = _get_input(gpio_num[_GPIO_NUM_SENSOR_ECHO]);
+	switch (level_flag) {
+	case GPIO_HIGH:
+		rising_timestamp = ktime_get_ns();
+		stored_gpio_value[_GPIO_NUM_SENSOR_ECHO] = GPIO_HIGH;
+		printk(KERN_INFO "irq_handler GPIO rising edge detected.\n");
+		break;
+	case GPIO_LOW:
+		falling_timestamp = ktime_get_ns();
+		stored_gpio_value[_GPIO_NUM_SENSOR_ECHO] = GPIO_LOW;
+		printk(KERN_INFO "irq_handler GPIO falling edge detected.\n");
+		break;
+	default:
+		printk(KERN_ERR "Get gpio input error.\n");
+		break;
+	}
+	return IRQ_HANDLED;
 }
 
 /* param
@@ -156,59 +179,78 @@ static char trigger_output (void)
 
 static int gpiodrv_open(struct inode *inode, struct file *filp)
 {
+	irq = gpio_to_irq(gpio_num[_GPIO_NUM_SENSOR_ECHO]);
+	if (irq < 0)
+	{
+		printk(KERN_ERR "gpio_to_irq error.\n");
+		return -EFAULT;
+	}
+	if (request_irq(irq,
+			(void*)irq_handler,
+			IRQF_SHARED | IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
+			DEVICE_NAME_IRQ,
+			DEVICE_NAME_IRQ) < 0)
+	{
+		printk(KERN_ERR "request irq error.\n");
+		return -EFAULT;
+	}
+	printk(KERN_INFO "request irq success.\n");
 	return 0;
 }
 
 static int gpiodrv_release(struct inode *inode, struct file *filp)
 {
+	free_irq(irq, DEVICE_NAME_IRQ);
 	return 0;
 }
 
 static int gpiodrv_read(struct file *filp, char *user_buf, size_t count, loff_t *ppos)
 {
-	printk(KERN_INFO "read() is not implement\n");
+	printk(KERN_INFO "read() is not implement.\n");
 	return 0;
 }
 
 static int gpiodrv_write(struct file *filp, const char *user_buf, size_t count, loff_t *ppos)
 {
-	printk(KERN_INFO "write() is not implement\n");
+	printk(KERN_INFO "write() is not implement.\n");
 	return 0;
 }
 
 static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	drv_rq_t rq; /* ユーザ空間とのやり取りデータ */
-	int irq; /* 割り込み番号 */
+	unsigned int distance = 0; /* 距離データ(cm) */
+
+	rq.status = false;
+	rq.value = 0;
 
 	switch (cmd) {
 	/* 距離測定開始 */
 	case GPIO_HCSR04_EXEC_MEASURE_DISTANCE:
-		if (copy_from_user(&rq, (void __user *)arg, sizeof(rq)))
-			return -EFAULT;
-		irq = gpio_to_irq(gpio_num[_GPIO_NUM_SENSOR_ECHO]);
-		if (request_irq(irq,
-				(void*)irq_handler,
-				IRQF_SHARED | IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
-				DEVICE_NAME_IRQ,
-				DEVICE_NAME_IRQ) < 0)
-		{
-			printk(KERN_ERR "request irq error.\n");
-			return -EFAULT;
-		}
 		if (trigger_output())
 			return -EFAULT;
+		rq.status = true;
+		printk(KERN_INFO "exec measure distance.\n");
 		if ((copy_to_user((void __user *)arg, &rq, sizeof(rq))))
 			return -EFAULT;
 		break;
 
 	/* 測定結果取得 */
 	case GPIO_HCSR04_GET_DISTANCE:
-		if (copy_from_user(&rq, (void __user *)arg, sizeof(rq)))
+		if (rising_timestamp == 0 ||
+		    falling_timestamp == 0 ||
+		    rising_timestamp < falling_timestamp) {
+			printk(KERN_INFO "Illegal edge timestamp.\n");
+		} else {
+			distance = (falling_timestamp - rising_timestamp) / 58;
+			rq.status = true;
+			rq.value = distance;
+		}
+		if ((copy_to_user((void __user *)arg, &rq, sizeof(rq))))
 			return -EFAULT;
 		break;
 	default:
-		printk(KERN_ERR "Illegal type error.");
+		printk(KERN_ERR "Illegal type error.\n");
 		return -EFAULT;
 	}
 	return 0;
@@ -239,19 +281,19 @@ static void gpiodrv_hardware_init(void)
 			case _GPIO_IO_INPUT:
 				gpio_direction_input(gpio);
 				if (gpio_get_value(gpio) == 0)
-					stored_gpio_value[i] = 0;
+					stored_gpio_value[i] = GPIO_LOW;
 				else
-					stored_gpio_value[i] = 1;
+					stored_gpio_value[i] = GPIO_HIGH;
 				break;
 
 			case _GPIO_IO_OUTPUT_LOW:
 				gpio_direction_output(gpio, 0);
-				stored_gpio_value[i] = 0;
+				stored_gpio_value[i] = GPIO_LOW;
 				break;
 
 			case _GPIO_IO_OUTPUT_HIGH:
 				gpio_direction_output(gpio, 1);
-				stored_gpio_value[i] = 0;
+				stored_gpio_value[i] = GPIO_HIGH;
 				break;
 
 			default:
@@ -271,7 +313,7 @@ static int __init gpiodrv_init(void)
 	int cdev_err = 0;
 	dev_t dev;
 
-	printk(KERN_INFO "%s init. ver.%d.%d\n", DEVICE_NAME,
+	printk(KERN_INFO "%s init. ver.%d.%d.\n", DEVICE_NAME,
 						 VERSION_MAJOR,
 						 VERSION_MINOR);
 
@@ -281,7 +323,7 @@ static int __init gpiodrv_init(void)
 	/* 空いているメジャー番号を確保 */
 	alloc_ret = alloc_chrdev_region(&dev, MINOR_BASE, MINOR_NUM, DEVICE_NAME);
 	if (alloc_ret != 0) {
-		printk(KERN_ERR "alloc_cdrdev_region = %d\n", alloc_ret);
+		printk(KERN_ERR "alloc_cdrdev_region = %d.\n", alloc_ret);
 		return -1;
 	}
 
@@ -297,7 +339,7 @@ static int __init gpiodrv_init(void)
 	/* このデバイスドライバをカーネルに登録 */
 	cdev_err = cdev_add(&device_cdev, dev, MINOR_NUM);
 	if (cdev_err != 0) {
-		printk(KERN_ERR "cdev_add = %d\n", cdev_err);
+		printk(KERN_ERR "cdev_add = %d.\n", cdev_err);
 		unregister_chrdev_region(dev, MINOR_NUM);
 		return -1;
 	}
@@ -305,7 +347,7 @@ static int __init gpiodrv_init(void)
 	/* デバイスのクラス登録(/sys/class/DEVICE_NAME の作成) */
 	device_class = class_create(THIS_MODULE, DEVICE_NAME);
 	if (IS_ERR(device_class)) {
-		printk(KERN_ERR "class_create err\n");
+		printk(KERN_ERR "class_create error.\n");
 		cdev_del(&device_cdev);
 		unregister_chrdev_region(dev, MINOR_NUM);
 		return -1;
