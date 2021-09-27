@@ -10,9 +10,9 @@ typedef struct drv_rq {
 
 #define GPIO_HCSR04_IOC_TYPE 'S'
 
-/* 距離計測開始要求 */
+/* 距離計測要求 */
 #define GPIO_HCSR04_EXEC_MEASURE_DISTANCE _IOR(GPIO_HCSR04_IOC_TYPE, 1, drv_rq_t)
-/* 計測した距離取得 */
+/* 測定結果取得 */
 #define GPIO_HCSR04_GET_DISTANCE _IOW(GPIO_HCSR04_IOC_TYPE, 2, drv_rq_t)
 
 #endif // HC_SR04_H
