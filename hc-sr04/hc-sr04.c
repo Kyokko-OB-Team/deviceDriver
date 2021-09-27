@@ -5,6 +5,7 @@
 #include <linux/fs.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
+#include <linux/uaccess.h>
 
 #include "../include/hc-sr04.h"
 
@@ -97,6 +98,12 @@ static char _set_output (int id, char value) {
 	return output;
 }
 
+/* param
+ * id : GPIO ID
+ * return :
+ * 	0はlow、1はhighを取得しました。
+ * 	エラーの場合は負の値を返します。
+ */
 static char _get_input (int id) {
 	char input = 0;
 
@@ -128,14 +135,23 @@ static irqreturn_t irq_handler (int irq, void *arg) {
 	unsigned long flags;
 }
 
-static void trigger_output (void)
+/* param
+ * return :
+ *	正常に処理が出来た場合は0を返します。
+ *	エラーの場合は負の値を返します。
+ */
+static char trigger_output (void)
 {
+	char out_result = 0;
 	/* トリガパルス出力時間 */
 	unsigned long trigger_pulse_us = 20; /* 仕様10us以上のため誤差を考慮して20us */
 
-	_set_output(_GPIO_NUM_SENSOR_TRIGGER, 1);
+	if ((out_result = _set_output(_GPIO_NUM_SENSOR_TRIGGER, 1)) < 0)
+		return out_result;
 	udelay(trigger_pulse_us);
-	_set_output(_GPIO_NUM_SENSOR_TRIGGER, 0);
+	if ((out_result = _set_output(_GPIO_NUM_SENSOR_TRIGGER, 0)) < 0)
+		return out_result;
+	return 0;
 }
 
 static int gpiodrv_open(struct inode *inode, struct file *filp)
@@ -162,14 +178,14 @@ static int gpiodrv_write(struct file *filp, const char *user_buf, size_t count, 
 
 static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	drv_rq_t rq;
-	int rt_info = 0;
-	char rt_char;
-	int irq;
+	drv_rq_t rq; /* ユーザ空間とのやり取りデータ */
+	int irq; /* 割り込み番号 */
 
 	switch (cmd) {
 	/* 距離測定開始 */
 	case GPIO_HCSR04_EXEC_MEASURE_DISTANCE:
+		if (copy_from_user(&rq, (void __user *)arg, sizeof(rq)))
+			return -EFAULT;
 		irq = gpio_to_irq(gpio_num[_GPIO_NUM_SENSOR_ECHO]);
 		if (request_irq(irq,
 				(void*)irq_handler,
@@ -180,7 +196,22 @@ static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 			printk(KERN_ERR "request irq error.\n");
 			return -EFAULT;
 		}
+		if (trigger_output())
+			return -EFAULT;
+		if ((copy_to_user((void __user *)arg, &rq, sizeof(rq))))
+			return -EFAULT;
+		break;
+
+	/* 測定結果取得 */
+	case GPIO_HCSR04_GET_DISTANCE:
+		if (copy_from_user(&rq, (void __user *)arg, sizeof(rq)))
+			return -EFAULT;
+		break;
+	default:
+		printk(KERN_ERR "Illegal type error.");
+		return -EFAULT;
 	}
+	return 0;
 }
 
 /* システムコールのハンドラテーブル */
