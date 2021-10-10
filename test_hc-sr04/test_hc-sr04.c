@@ -39,7 +39,7 @@ int main (int argc, char *argv[]) {
   if (0 > ioctl(fd, GPIO_HCSR04_GET_DISTANCE, &rq)) {
     perror("GPIO_HCSR04_GET_DISTANCE");
   } else {
-    printf("exec get distance.\ndistance: %dcm\n", rq.value);
+    printf("exec get distance.\ndistance: %dmm\n", rq.value);
   }
 
   close(fd);
