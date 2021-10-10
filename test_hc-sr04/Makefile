@@ -1,8 +1,13 @@
 CFLAGS += -Wall
+LDFLAGS := $(LDFLAGS)
 
-program = test_hc-sr04
+APP = test_hc-sr04
+SRC = test_hc-sr04.c
 
-all: $(program)
+all: $(APP)
+
+$(APP): $(SRC)
+	$(CC) $(LDFLAGS) $(SRC) -o $(APP)
 
 clean:
-	$(RM) $(program) *.o
+	$(RM) $(APP) *.o
