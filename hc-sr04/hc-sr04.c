@@ -80,7 +80,7 @@ static char _set_output (int id, char value) {
 	char output = 0;
 
 	if ((id < 0) || (_GPIO_NUM_MAX <= id)) {
-		printk(KERN_ERR "Set illegal ID error.(ID:%d)\n", id);
+		printk(KERN_ERR "[%s:%d]Set illegal ID error.(ID:%d)\n", __func__, __LINE__, id);
 		return -EINVAL;
 	}
 	switch (gpio_init_value[id]) {
@@ -90,7 +90,7 @@ static char _set_output (int id, char value) {
 
 	case _GPIO_IO_INPUT:
 	default:
-		printk(KERN_ERR "Set illegal ID error.(ID:%d)\n", id);
+		printk(KERN_ERR "[%s:%d]Set illegal ID error.(ID:%d)\n", __func__, __LINE__, id);
 		return -EINVAL;
 	}
 	if (value == 0)
@@ -113,7 +113,7 @@ static char _get_input (int id) {
 	char input = 0;
 
 	if ((id < 0) || (_GPIO_NUM_MAX <= id)) {
-		printk(KERN_ERR "Set illegal ID error.(ID:%d)\n", id);
+		printk(KERN_ERR "[%s:%d]Set illegal ID error.(ID:%d)\n", __func__, __LINE__, id);
 		return -EINVAL;
 	}
 	switch (gpio_init_value[id]) {
@@ -123,7 +123,7 @@ static char _get_input (int id) {
 	case _GPIO_IO_OUTPUT_LOW:
 	case _GPIO_IO_OUTPUT_HIGH:
 	default:
-		printk(KERN_ERR "Set illegal ID error.(ID:%d)\n", id);
+		printk(KERN_ERR "[%s:%d]Set illegal ID error.(ID:%d)\n", __func__, __LINE__, id);
 		return -EINVAL;
 	}
 	if (gpio_get_value(gpio_num[id]) == GPIO_LOW) {
@@ -144,15 +144,15 @@ static irqreturn_t irq_handler (int irq, void *arg) {
 	case GPIO_HIGH:
 		rising_timestamp = ktime_get_ns();
 		stored_gpio_value[_GPIO_NUM_SENSOR_ECHO] = GPIO_HIGH;
-		printk(KERN_INFO "irq_handler GPIO rising edge detected.\n");
+		printk(KERN_INFO "[%s:%d]irq_handler GPIO rising edge detected.\n", __func__, __LINE__);
 		break;
 	case GPIO_LOW:
 		falling_timestamp = ktime_get_ns();
 		stored_gpio_value[_GPIO_NUM_SENSOR_ECHO] = GPIO_LOW;
-		printk(KERN_INFO "irq_handler GPIO falling edge detected.\n");
+		printk(KERN_INFO "[%s:%d]irq_handler GPIO falling edge detected.\n", __func__, __LINE__);
 		break;
 	default:
-		printk(KERN_ERR "Get gpio input error.\n");
+		printk(KERN_ERR "[%s:%d]Get gpio input error.\n", __func__, __LINE__);
 		break;
 	}
 	return IRQ_HANDLED;
@@ -182,7 +182,7 @@ static int gpiodrv_open(struct inode *inode, struct file *filp)
 	irq = gpio_to_irq(gpio_num[_GPIO_NUM_SENSOR_ECHO]);
 	if (irq < 0)
 	{
-		printk(KERN_ERR "gpio_to_irq error.\n");
+		printk(KERN_ERR "[%s:%d]gpio_to_irq error.\n", __func__, __LINE__);
 		return -EFAULT;
 	}
 	if (request_irq(irq,
@@ -191,10 +191,10 @@ static int gpiodrv_open(struct inode *inode, struct file *filp)
 			DEVICE_NAME_IRQ,
 			DEVICE_NAME_IRQ) < 0)
 	{
-		printk(KERN_ERR "request irq error.\n");
+		printk(KERN_ERR "[%s:%d]request irq error.\n", __func__, __LINE__);
 		return -EFAULT;
 	}
-	printk(KERN_INFO "request irq success.\n");
+	printk(KERN_INFO "[%s:%d]request irq success.\n", __func__, __LINE__);
 	return 0;
 }
 
@@ -206,13 +206,13 @@ static int gpiodrv_release(struct inode *inode, struct file *filp)
 
 static int gpiodrv_read(struct file *filp, char *user_buf, size_t count, loff_t *ppos)
 {
-	printk(KERN_INFO "read() is not implement.\n");
+	printk(KERN_INFO "[%s:%d]read() is not implement.\n", __func__, __LINE__);
 	return 0;
 }
 
 static int gpiodrv_write(struct file *filp, const char *user_buf, size_t count, loff_t *ppos)
 {
-	printk(KERN_INFO "write() is not implement.\n");
+	printk(KERN_INFO "[%s:%d]write() is not implement.\n", __func__, __LINE__);
 	return 0;
 }
 
@@ -230,7 +230,7 @@ static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 		if (trigger_output())
 			return -EFAULT;
 		rq.status = true;
-		printk(KERN_INFO "exec measure distance.\n");
+		printk(KERN_INFO "[%s:%d]exec measure distance.\n", __func__, __LINE__);
 		if ((copy_to_user((void __user *)arg, &rq, sizeof(rq))))
 			return -EFAULT;
 		break;
@@ -240,7 +240,7 @@ static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 		if (rising_timestamp == 0 ||
 		    falling_timestamp == 0 ||
 		    rising_timestamp < falling_timestamp) {
-			printk(KERN_INFO "Illegal edge timestamp.\n");
+			printk(KERN_INFO "[%s:%d]Illegal edge timestamp.\n", __func__, __LINE__);
 		} else {
 			distance = ((unsigned int)(falling_timestamp - rising_timestamp) / 58) * 10;
 			rq.status = true;
@@ -250,7 +250,7 @@ static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 			return -EFAULT;
 		break;
 	default:
-		printk(KERN_ERR "Illegal type error.\n");
+		printk(KERN_ERR "[%s:%d]Illegal type error.\n", __func__, __LINE__);
 		return -EFAULT;
 	}
 	return 0;
