@@ -1,6 +1,7 @@
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -9,7 +10,7 @@
 #define TEST_HCSR04_MAJ_VER (0x00)
 #define TEST_HCSR04_MIN_VER (0x01)
 
-#define DEVICE_FILE "/dev/hc-sr040"  //GPIOドライバ
+#define DEVICE_FILE "/dev/hc_sr040"  //GPIOドライバ
 
 int main (int argc, char *argv[]) {
   int fd;

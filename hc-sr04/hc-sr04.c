@@ -10,9 +10,9 @@
 
 #include "../include/hc-sr04.h"
 
-#define DEVICE_NAME "hc-sr04"
-#define DEVICE_NAMED "hc-sr04%d"
-#define DEVICE_NAME_IRQ "hc-sr04_irq"
+#define DEVICE_NAME "hc_sr04"
+#define DEVICE_NAMED "hc_sr04%d"
+#define DEVICE_NAME_IRQ "hc_sr04_irq"
 #define VERSION_MINOR (0x01)
 #define VERSION_MAJOR (0x00)
 
@@ -219,7 +219,7 @@ static int gpiodrv_write(struct file *filp, const char *user_buf, size_t count, 
 static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	drv_rq_t rq; /* ユーザ空間とのやり取りデータ */
-	unsigned int distance = 0; /* 距離データ(cm) */
+	unsigned int distance = 0; /* 距離データ(mm) */
 
 	rq.status = false;
 	rq.value = 0;
@@ -242,7 +242,7 @@ static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 		    rising_timestamp < falling_timestamp) {
 			printk(KERN_INFO "Illegal edge timestamp.\n");
 		} else {
-			distance = (falling_timestamp - rising_timestamp) / 58;
+			distance = ((unsigned int)(falling_timestamp - rising_timestamp) / 58) * 10;
 			rq.status = true;
 			rq.value = distance;
 		}
@@ -304,6 +304,7 @@ static void gpiodrv_hardware_init(void)
 			printk(KERN_ERR "gpio_is_valid(%d) error.\n", gpio);
 		}
 	}
+	printk(KERN_INFO "hardware init fin.\n");
 }
 
 /* insmod時に呼ばれる関数 */
@@ -354,7 +355,9 @@ static int __init gpiodrv_init(void)
 	}
 
 	/* デバイスノード作成 /sys/class/DEVICE_NAME/DEVICE_NAME */
-	device_create(device_class, NULL, dev, NULL, DEVICE_NAMED, MINOR_BASE);
+	device_create(device_class, NULL, MKDEV(device_major, 0), NULL, DEVICE_NAMED, MINOR_BASE);
+
+	printk(KERN_INFO "driver init fin.\n");
 
 	return 0;
 }
@@ -371,6 +374,7 @@ static void gpiodrv_hardware_exit(void)
 		else
 			printk(KERN_ERR "gpio_is_valid(%d) is not valid.\n", gpio);
 	}
+	printk(KERN_INFO "hardware exit fin.\n");
 }
 
 /* rmmod時に呼ばれる関数 */
@@ -381,6 +385,9 @@ static void __exit gpiodrv_exit(void)
 	printk(KERN_INFO "%s module exit.\n", DEVICE_NAME);
 
 	dev = MKDEV(device_major, MINOR_BASE);
+
+	/* /sys/class/DEVICE_NAME/DEVICE_NAME を削除 */
+	device_destroy(device_class, MKDEV(device_major, 0));
 
 	/* /sys/class/DEVICE_NAME/ を削除 */
 	class_destroy(device_class);

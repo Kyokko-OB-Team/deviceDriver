@@ -27,6 +27,7 @@ __used __section(__versions) = {
 	{ 0xe338ec46, "module_layout" },
 	{ 0xfe990052, "gpio_free" },
 	{ 0x1926e08c, "class_destroy" },
+	{ 0x152eb154, "device_destroy" },
 	{ 0xcf2eb6cf, "device_create" },
 	{ 0x2ae31514, "cdev_del" },
 	{ 0x550754f6, "__class_create" },
@@ -51,4 +52,4 @@ __used __section(__versions) = {
 MODULE_INFO(depends, "");
 
 
-MODULE_INFO(srcversion, "3ADD42CB4F716E3001B44E4");
+MODULE_INFO(srcversion, "3B8EC20446656D0DD560FA9");
