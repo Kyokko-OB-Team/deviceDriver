@@ -99,6 +99,7 @@ static char _set_output (int id, char value) {
 		output = 1;
 	gpio_direction_output(gpio_num[id], output);
 	stored_gpio_value[id] = output;
+//	printk(KERN_INFO "[%s:%d]Set output: %d\n", __func__, __LINE__, output);
 
 	return output;
 }
@@ -133,23 +134,24 @@ static char _get_input (int id) {
 		input = GPIO_HIGH;
 		stored_gpio_value[id] = GPIO_HIGH;
 	}
+//	printk(KERN_INFO "[%s:%d]Get input: %d\n", __func__, __LINE__, input);
 	return input;
 }
 
 static irqreturn_t irq_handler (int irq, void *arg) {
 	char level_flag; /* 割り込みのエッジ */
 
-	level_flag = _get_input(gpio_num[_GPIO_NUM_SENSOR_ECHO]);
+	level_flag = _get_input(_GPIO_NUM_SENSOR_ECHO);
 	switch (level_flag) {
 	case GPIO_HIGH:
 		rising_timestamp = ktime_get_ns();
 		stored_gpio_value[_GPIO_NUM_SENSOR_ECHO] = GPIO_HIGH;
-		printk(KERN_INFO "[%s:%d]irq_handler GPIO rising edge detected.\n", __func__, __LINE__);
+//		printk(KERN_INFO "[%s:%d]irq_handler GPIO rising edge detected.\n", __func__, __LINE__);
 		break;
 	case GPIO_LOW:
 		falling_timestamp = ktime_get_ns();
 		stored_gpio_value[_GPIO_NUM_SENSOR_ECHO] = GPIO_LOW;
-		printk(KERN_INFO "[%s:%d]irq_handler GPIO falling edge detected.\n", __func__, __LINE__);
+//		printk(KERN_INFO "[%s:%d]irq_handler GPIO falling edge detected.\n", __func__, __LINE__);
 		break;
 	default:
 		printk(KERN_ERR "[%s:%d]Get gpio input error.\n", __func__, __LINE__);
@@ -174,6 +176,7 @@ static char trigger_output (void)
 	udelay(trigger_pulse_us);
 	if ((out_result = _set_output(_GPIO_NUM_SENSOR_TRIGGER, 0)) < 0)
 		return out_result;
+//	printk(KERN_INFO "[%s:%d]start trigger.\n", __func__, __LINE__);
 	return 0;
 }
 
@@ -194,7 +197,7 @@ static int gpiodrv_open(struct inode *inode, struct file *filp)
 		printk(KERN_ERR "[%s:%d]request irq error.\n", __func__, __LINE__);
 		return -EFAULT;
 	}
-	printk(KERN_INFO "[%s:%d]request irq success.\n", __func__, __LINE__);
+//	printk(KERN_INFO "[%s:%d]request irq success.\n", __func__, __LINE__);
 	return 0;
 }
 
@@ -230,7 +233,7 @@ static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 		if (trigger_output())
 			return -EFAULT;
 		rq.status = true;
-		printk(KERN_INFO "[%s:%d]exec measure distance.\n", __func__, __LINE__);
+//		printk(KERN_INFO "[%s:%d]exec measure distance.\n", __func__, __LINE__);
 		if ((copy_to_user((void __user *)arg, &rq, sizeof(rq))))
 			return -EFAULT;
 		break;
@@ -239,10 +242,14 @@ static long gpiodrv_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 	case GPIO_HCSR04_GET_DISTANCE:
 		if (rising_timestamp == 0 ||
 		    falling_timestamp == 0 ||
-		    rising_timestamp < falling_timestamp) {
+		    rising_timestamp > falling_timestamp) {
 			printk(KERN_INFO "[%s:%d]Illegal edge timestamp.\n", __func__, __LINE__);
+			printk(KERN_ERR "rising_timestamp(ns): %lld\n", rising_timestamp);
+			printk(KERN_ERR "falling_timestamp(ns): %lld\n", falling_timestamp);
 		} else {
-			distance = ((unsigned int)(falling_timestamp - rising_timestamp) / 58) * 10;
+//			printk(KERN_INFO "rising_timestamp(ns): %lld\n", rising_timestamp);
+//			printk(KERN_INFO "falling_timestamp(ns): %lld\n", falling_timestamp);
+			distance = ((unsigned int)(falling_timestamp - rising_timestamp) / 58) * 1000;
 			rq.status = true;
 			rq.value = distance;
 		}
@@ -304,7 +311,7 @@ static void gpiodrv_hardware_init(void)
 			printk(KERN_ERR "gpio_is_valid(%d) error.\n", gpio);
 		}
 	}
-	printk(KERN_INFO "hardware init fin.\n");
+//	printk(KERN_INFO "hardware init fin.\n");
 }
 
 /* insmod時に呼ばれる関数 */
@@ -357,7 +364,7 @@ static int __init gpiodrv_init(void)
 	/* デバイスノード作成 /sys/class/DEVICE_NAME/DEVICE_NAME */
 	device_create(device_class, NULL, MKDEV(device_major, 0), NULL, DEVICE_NAMED, MINOR_BASE);
 
-	printk(KERN_INFO "driver init fin.\n");
+//	printk(KERN_INFO "driver init fin.\n");
 
 	return 0;
 }
@@ -374,7 +381,7 @@ static void gpiodrv_hardware_exit(void)
 		else
 			printk(KERN_ERR "gpio_is_valid(%d) is not valid.\n", gpio);
 	}
-	printk(KERN_INFO "hardware exit fin.\n");
+//	printk(KERN_INFO "hardware exit fin.\n");
 }
 
 /* rmmod時に呼ばれる関数 */
