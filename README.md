@@ -31,7 +31,7 @@ testアプリのソースコードも参考にしてください。
 $ cd ~/deviceDriver
 $ sudo cp /boot/kernel.img /boot/kernel-bk.img
 $ sudo cp ./kernel.img /boot/.
-$ sudo tar -xzvf ./dtb.tar.gz -C /boot/
+$ sudo tar --no-same-owner -xzvf ./dtb.tar.gz -C /boot/
 $ sudo tar -xvjf ./modules.tar.bz2 -C /
 $ sync
 $ sudo shutdown -r now
