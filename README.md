@@ -19,11 +19,22 @@ testアプリのソースコードも参考にしてください。
 このカーネルモジュールが使用可能なカーネルは、 [こちら](https://github.com/Kyokko-OB-Team/deviceDriver/blob/master/kernel.img) にございます。<br>
 /bootディレクトリ配下のkernel.imgと差し替えることで、<br>
 本リポジトリのカーネルモジュールをロードすることができるようになります。<br>
-差し替えは、以下のように元のカーネルイメージをバックアップしてから行うのがおすすめです。<br>
+差し替えは、元のカーネルイメージをバックアップしてから行うのがおすすめです。<br>
+<br>
+また、カーネルイメージを更新した場合は、<br>
+同時にビルドされたカーネルモジュールも合わせて更新する必要があります。<br>
+<br>
+本リポジトリをRaspberry Piにcloneした場合に、デバイスドライバを使用するまでの手順は以下を参考にしてください。<br>
+<br>
 
 ```
+$ cd ~/deviceDriver
 $ sudo cp /boot/kernel.img /boot/kernel-bk.img
-$ sudo cp ~/deviceDriver/kernel.img /boot/.
+$ sudo cp ./kernel.img /boot/.
+$ sudo tar -xzvf ./dtb.tar.gz -C /boot/
+$ sudo tar -xvjf ./modules.tar.bz2 -C /
+$ sync
+$ sudo shutdown -r now
 ```
 
 <br>
