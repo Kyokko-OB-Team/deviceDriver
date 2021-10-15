@@ -1,12 +1,16 @@
 # 自作DeviceDriver
 
 testアプリのソースコードも参考にしてください。
+<br>
 
 ## 目次
 
 - [デバイスドライバを使うには](#デバイスドライバを使うには)
 - [HC-SR04](#HC-SR04)
+- [Build](#Build)
 
+<br>
+<br>
 
 ## デバイスドライバを使うには
 
@@ -55,6 +59,9 @@ $ sudo insmod hc_sr04.ko
 $ sudo rmmod hc_sr04
 ```
 
+<br>
+<br>
+
 
 ## HC-SR04
 
@@ -66,9 +73,55 @@ $ sudo rmmod hc_sr04
 `GPIO_HCSR04_EXEC_MEASURE_DISTANCE` から `GPIO_HCSR04_GET_DISTANCE` の実行までは<br>
 1秒程度の時間を開けてください。<br>
 <br>
-<br>
+
 | コマンド | データ | 方向 | 説明 |
 |:---------|:------:|:----:|:-----|
 | `GPIO_HCSR04_EXEC_MEASURE_DISTANCE` | - | out | 距離の測定要求 |
 | `GPIO_HCSR04_GET_DISTANCE` | 距離データ(mm) | in | 測定した距離の取得 |
+
+<br>
+<br>
+
+## Build
+
+まずは対象のカーネルをビルドする必要があります。<br>
+最低でも空き領域が10GB以上のストレージと8GB以上のメモリのPCで実施することをおすすめします。<br>
+x86-64でクロスコンパイルします。<br>
+<br>
+また、カーネルをビルドし直す場合は、<br>
+カーネルモジュールやデバイスツリーも更新する必要がありますのでご注意ください。<br>
+<br>
+
+```
+// 必要パッケージのインストール
+$ sudo apt install git bc bison flex libssl-dev make
+
+// カーネルとクロスコンパイラをclone
+$ git clone git@github.com:Kyokko-OB-Team/linux.git
+$ git clone git@github.com:raspberrypi/tools.git
+
+// 手元のRaspberry Pi ZeroのKernelと同じリビジョンでブランチ切ったのでチェックアウト
+$ cd linux
+$ git fetch origin raspbian-5.4.51_kernel
+$ git checkout raspbian-5.4.51_kernel
+
+// クロスコンパイルのための環境変数を設定
+$ export ARCH=arm
+$ export KERNEL=kernel
+
+// .config作成
+$ make bcmrpi_defconfig
+
+// クロスコンパイラ指定
+$ export CROSS_COMPILE=~/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin/arm-linux-gnueabihf-
+
+// カーネルビルド
+$ make zImage modules dtbs
+
+// デバイスドライバのビルド
+$ cd ./deviceDriver
+$ . ./env.sh
+$ cd ./hc-sr04
+$ make
+```
 
